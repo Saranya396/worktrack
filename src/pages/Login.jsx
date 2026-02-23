@@ -5,19 +5,58 @@ import BackButton from "../components/BackButton";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
+  const [errors, setErrors] = useState({});
+
+  const validateField = (name, value) => {
+    switch (name) {
+      case "email":
+        if (!value) return "Email is required";
+        if (!/^\S+@\S+\.\S+$/.test(value))
+          return "Invalid email format";
+        return "";
+
+      case "password":
+        if (!value) return "Password is required";
+        if (value.length < 8)
+          return "Minimum 8 characters required";
+        return "";
+
+      default:
+        return "";
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setForm({ ...form, [name]: value });
+
+    const error = validateField(name, value);
+    setErrors({ ...errors, [name]: error });
+  };
 
   const handleLogin = () => {
-    if (!email || !password) {
-      alert("Enter email and password");
-      return;
-    }
+    let newErrors = {};
 
-    const user = loginUser(email, password);
+    Object.keys(form).forEach((key) => {
+      const error = validateField(key, form[key]);
+      if (error) newErrors[key] = error;
+    });
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) return;
+
+    const user = loginUser(form.email, form.password);
 
     if (!user) {
-      alert("Invalid Credentials");
+      setErrors({ password: "Invalid credentials" });
       return;
     }
 
@@ -27,6 +66,11 @@ export default function Login() {
       navigate("/student/dashboard");
     }
   };
+
+  const inputStyle = (field) =>
+    `w-full mb-1 p-3 border rounded-lg ${
+      errors[field] ? "border-red-500" : "border-gray-300"
+    }`;
 
   return (
     <div className="flex items-center justify-center min-h-screen">
@@ -39,21 +83,25 @@ export default function Login() {
         </h2>
 
         <input
+          name="email"
           placeholder="Email"
-          className="w-full mb-4 p-3 border rounded-lg"
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={handleChange}
+          className={inputStyle("email")}
         />
+        <p className="text-red-500 text-sm mb-2">{errors.email}</p>
 
         <input
+          name="password"
           type="password"
           placeholder="Password"
-          className="w-full mb-6 p-3 border rounded-lg"
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={handleChange}
+          className={inputStyle("password")}
         />
+        <p className="text-red-500 text-sm mb-2">{errors.password}</p>
 
         <button
           onClick={handleLogin}
-          className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700"
+          className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 mt-3"
         >
           Login
         </button>
