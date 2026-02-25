@@ -1,194 +1,265 @@
+import { Briefcase, ArrowLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { registerUser } from "../utils/auth";
-import BackButton from "../components/BackButton";
 
 export default function Register() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    name: "",
+  const [formData, setFormData] = useState({
+    fullName: "",
     email: "",
     password: "",
     age: "",
     gender: "",
-    role: "student", // default role
+    role: "Student",
   });
 
   const [errors, setErrors] = useState({});
 
-  // Field Validation
-  const validateField = (name, value) => {
-    switch (name) {
-      case "name":
-        if (!value.trim()) return "Name is required";
-        if (value.length < 3) return "Minimum 3 characters required";
-        if (!/^[A-Za-z\s]+$/.test(value))
-          return "Only letters and spaces allowed";
-        return "";
+  // Validation
+  const validate = (name, value) => {
+    let errorMsg = "";
 
-      case "email":
-        if (!value) return "Email is required";
-        if (!/^\S+@\S+\.\S+$/.test(value))
-          return "Invalid email format";
-        return "";
-
-      case "password":
-        if (!value) return "Password is required";
-        if (value.length < 8) return "Minimum 8 characters required";
-        if (!/[A-Z]/.test(value))
-          return "Must contain 1 uppercase letter";
-        if (!/[a-z]/.test(value))
-          return "Must contain 1 lowercase letter";
-        if (!/[0-9]/.test(value))
-          return "Must contain 1 number";
-        if (!/[!@#$%^&*]/.test(value))
-          return "Must contain 1 special character";
-        return "";
-
-      case "age":
-        if (!value) return "Age is required";
-        if (isNaN(value)) return "Age must be a number";
-        if (value < 16 || value > 60)
-          return "Age must be between 16 and 60";
-        return "";
-
-      case "gender":
-        if (!value) return "Please select gender";
-        return "";
-
-      case "role":
-        if (!value) return "Role must be selected";
-        return "";
-
-      default:
-        return "";
+    if (name === "fullName") {
+      if (value.trim().length < 3)
+        errorMsg = "Full name must be at least 3 characters";
     }
+
+    if (name === "email") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value))
+        errorMsg = "Enter a valid email address";
+    }
+
+    if (name === "password") {
+      if (value.length < 6)
+        errorMsg = "Password must be at least 6 characters";
+    }
+
+    if (name === "age") {
+      if (!value) {
+        errorMsg = "Age is required";
+      } else if (value < 16 || value > 60) {
+        errorMsg = "Age must be between 16 and 60";
+      }
+    }
+
+    if (name === "gender") {
+      if (!value)
+        errorMsg = "Please select your gender";
+    }
+
+    return errorMsg;
   };
 
-  // On typing
+  // Handle change
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setForm({ ...form, [name]: value });
+    if (name === "age" && !/^\d*$/.test(value)) return;
 
-    const error = validateField(name, value);
-    setErrors({ ...errors, [name]: error });
+    setFormData({ ...formData, [name]: value });
+
+    setErrors({
+      ...errors,
+      [name]: validate(name, value),
+    });
   };
 
-  // On Submit
-  const handleSubmit = () => {
-    let newErrors = {};
+  // Submit
+  const handleSubmit = (e) => {
+    e.preventDefault();
 
-    Object.keys(form).forEach((key) => {
-      const error = validateField(key, form[key]);
-      if (error) newErrors[key] = error;
+    let newErrors = {};
+    Object.keys(formData).forEach((field) => {
+      newErrors[field] = validate(field, formData[field]);
     });
 
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length > 0) return;
+    const hasErrors = Object.values(newErrors).some((err) => err);
+    if (hasErrors) return;
 
-    const result = registerUser(form);
+    // 🔥 Get existing users
+    const users = JSON.parse(localStorage.getItem("users")) || [];
 
-    if (!result.success) {
-      setErrors({ email: result.message });
+    // 🔥 Check duplicate email
+    const emailExists = users.find(
+      (user) => user.email === formData.email
+    );
+
+    if (emailExists) {
+      alert("Email already registered!");
       return;
     }
 
-    alert("Registration Successful!");
+    // 🔥 Save new user
+    users.push(formData);
+    localStorage.setItem("users", JSON.stringify(users));
+
+    alert("Registration Successful 🎉");
     navigate("/login");
   };
 
-  const inputStyle = (field) =>
-    `w-full mb-1 p-3 border rounded-lg ${
-      errors[field] ? "border-red-500" : "border-gray-300"
-    }`;
-
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow-md w-96">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 relative">
 
-        <BackButton to="/" />
+      {/* Back Button */}
+      <button
+        onClick={() => navigate("/")}
+        className="absolute top-6 left-6 flex items-center gap-2 text-gray-600 hover:text-indigo-600"
+      >
+        <ArrowLeft size={18} />
+        Back
+      </button>
 
-        <h2 className="text-2xl font-bold mb-6 text-center">
-          Register
-        </h2>
+      {/* Logo */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-3 rounded-xl text-white">
+          <Briefcase size={20} />
+        </div>
+        <h1 className="text-3xl font-bold text-indigo-600">WorkTrack</h1>
+      </div>
 
-        {/* Name */}
-        <input
-          name="name"
-          placeholder="Full Name"
-          value={form.name}
-          onChange={handleChange}
-          className={inputStyle("name")}
-        />
-        <p className="text-red-500 text-sm mb-2">{errors.name}</p>
+      <p className="text-gray-600 mb-8">
+        Create your account to get started.
+      </p>
 
-        {/* Email */}
-        <input
-          name="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
-          className={inputStyle("email")}
-        />
-        <p className="text-red-500 text-sm mb-2">{errors.email}</p>
+      <div className="bg-white w-full max-w-md p-8 rounded-2xl shadow-lg">
+        <h2 className="text-2xl font-bold mb-6">Create New Account</h2>
 
-        {/* Password */}
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          className={inputStyle("password")}
-        />
-        <p className="text-red-500 text-sm mb-2">{errors.password}</p>
+        <form onSubmit={handleSubmit} className="space-y-5">
 
-        {/* Age */}
-        <input
-          name="age"
-          type="number"
-          placeholder="Age"
-          value={form.age}
-          onChange={handleChange}
-          className={inputStyle("age")}
-        />
-        <p className="text-red-500 text-sm mb-2">{errors.age}</p>
+          {/* Full Name */}
+          <div>
+            <label className="block mb-1 font-medium">Full Name</label>
+            <input
+              type="text"
+              name="fullName"
+              value={formData.fullName}
+              onChange={handleChange}
+              className="w-full p-3 rounded-xl bg-gray-100"
+            />
+            {errors.fullName && (
+              <p className="text-red-500 text-sm">{errors.fullName}</p>
+            )}
+          </div>
 
-        {/* Gender */}
-        <select
-          name="gender"
-          value={form.gender}
-          onChange={handleChange}
-          className={inputStyle("gender")}
-        >
-          <option value="">Select Gender</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-        </select>
-        <p className="text-red-500 text-sm mb-2">{errors.gender}</p>
+          {/* Email */}
+          <div>
+            <label className="block mb-1 font-medium">Email</label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full p-3 rounded-xl bg-gray-100"
+            />
+            {errors.email && (
+              <p className="text-red-500 text-sm">{errors.email}</p>
+            )}
+          </div>
 
-        {/* Role */}
-        <select
-          name="role"
-          value={form.role}
-          onChange={handleChange}
-          className={inputStyle("role")}
-        >
-          <option value="student">Student</option>
-          <option value="admin">Admin</option>
-        </select>
-        <p className="text-red-500 text-sm mb-3">{errors.role}</p>
+          {/* Password */}
+          <div>
+            <label className="block mb-1 font-medium">Password</label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              className="w-full p-3 rounded-xl bg-gray-100"
+            />
+            {errors.password && (
+              <p className="text-red-500 text-sm">{errors.password}</p>
+            )}
+          </div>
 
-        {/* Button */}
-        <button
-          onClick={handleSubmit}
-          className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition"
-        >
-          Register
-        </button>
+          {/* Age */}
+          <div>
+            <label className="block mb-1 font-medium">Age</label>
+            <input
+              type="text"
+              name="age"
+              value={formData.age}
+              onChange={handleChange}
+              className="w-full p-3 rounded-xl bg-gray-100"
+            />
+            {errors.age && (
+              <p className="text-red-500 text-sm">{errors.age}</p>
+            )}
+          </div>
+
+          {/* Gender */}
+          <div>
+            <label className="block mb-2 font-medium">Gender</label>
+            <div className="flex gap-4">
+              <label>
+                <input
+                  type="radio"
+                  name="gender"
+                  value="Male"
+                  onChange={handleChange}
+                />{" "}
+                Male
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="gender"
+                  value="Female"
+                  onChange={handleChange}
+                />{" "}
+                Female
+              </label>
+            </div>
+            {errors.gender && (
+              <p className="text-red-500 text-sm">{errors.gender}</p>
+            )}
+          </div>
+
+          {/* Role */}
+          <div>
+            <label className="block mb-2 font-medium">I am a:</label>
+            <div className="flex gap-6">
+              <label>
+                <input
+                  type="radio"
+                  name="role"
+                  value="Student"
+                  checked={formData.role === "Student"}
+                  onChange={handleChange}
+                />{" "}
+                Student
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="role"
+                  value="Admin"
+                  onChange={handleChange}
+                />{" "}
+                Admin
+              </label>
+            </div>
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            className="w-full mt-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-3 rounded-xl font-semibold"
+          >
+            Create Account
+          </button>
+
+          <p className="text-center text-gray-600 text-sm mt-4">
+            Already have an account?{" "}
+            <Link to="/login" className="text-indigo-600 font-medium">
+              Login here
+            </Link>
+          </p>
+
+        </form>
       </div>
     </div>
   );

@@ -1,46 +1,105 @@
-import {
-  getJobs,
-  applyJob,
-} from "../../utils/job";
-import StudentLayout from "../../layouts/StudentLayout";
-import BackButton from "../../components/BackButton";
-import { getCurrentUser } from "../../utils/auth";
+import { useEffect, useState } from "react";
+import StudentLayout from "./StudentLayout";
 
 export default function ViewJobs() {
-  const jobs = getJobs();
-  const user = getCurrentUser();
+  const [jobs, setJobs] = useState([]);
+
+  useEffect(() => {
+    const storedJobs =
+      JSON.parse(localStorage.getItem("jobs")) || [];
+    setJobs(storedJobs);
+  }, []);
 
   const handleApply = (job) => {
-    applyJob({
-      job: job.title,
-      student: user.name,
-    });
-    alert("Applied Successfully!");
+    const currentUser =
+      JSON.parse(localStorage.getItem("currentUser"));
+
+    if (!currentUser) {
+      alert("Please login first");
+      return;
+    }
+
+    const applications =
+      JSON.parse(localStorage.getItem("applications")) || [];
+
+    const alreadyApplied = applications.find(
+      (app) =>
+        app.jobId === job.id &&
+        app.studentEmail === currentUser.email
+    );
+
+    if (alreadyApplied) {
+      alert("You already applied!");
+      return;
+    }
+
+    const newApplication = {
+      id: Date.now(),
+      jobId: job.id,
+      jobTitle: job.title,
+      studentEmail: currentUser.email,
+      studentName: currentUser.fullName,
+      status: "Pending",
+      appliedDate: new Date().toISOString().split("T")[0],
+    };
+
+    applications.push(newApplication);
+
+    localStorage.setItem(
+      "applications",
+      JSON.stringify(applications)
+    );
+
+    alert("Application Submitted!");
   };
 
   return (
     <StudentLayout>
-      <BackButton />
+      <div className="p-8">
+        <h1 className="text-3xl font-bold mb-6">
+          Available Jobs
+        </h1>
 
-      <h2 className="text-xl font-semibold mb-4">
-        Available Jobs
-      </h2>
+        <div className="grid md:grid-cols-2 gap-6">
+          {jobs.length > 0 ? (
+            jobs.map((job) => (
+              <div
+                key={job.id}
+                className="bg-white p-6 rounded-xl shadow hover:shadow-lg transition"
+              >
+                <h2 className="text-xl font-semibold mb-2">
+                  {job.title}
+                </h2>
 
-      {jobs.map((job) => (
-        <div
-          key={job.id}
-          className="bg-white p-4 rounded-lg shadow mb-4"
-        >
-          <h4 className="font-semibold">{job.title}</h4>
+                <p className="text-gray-600">
+                  {job.department}
+                </p>
 
-          <button
-            onClick={() => handleApply(job)}
-            className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded"
-          >
-            Apply
-          </button>
+                <p className="font-medium">
+                  ${job.pay}/hr
+                </p>
+
+                <p className="text-gray-600">
+                  {job.timing}
+                </p>
+
+                <p className="text-gray-500 mb-4">
+                  {job.description}
+                </p>
+
+                <button
+                  onClick={() => handleApply(job)}
+                  className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg"
+                >
+                  Apply
+                </button>
+              </div>
+            ))
+          ) : (
+            <p>No jobs available.</p>
+          )}
         </div>
-      ))}
+      </div>
     </StudentLayout>
   );
 }
